@@ -4,7 +4,7 @@ local M = {}
 
 M.rustToolchainChannel = "nightly-2025-08-20"
 M.rustToolchainComponenents = { "rust-src", "rustc-dev", "llvm-tools-preview" }
-M.cargoCommand = string.format("cargo +%s", M.rustToolchainChannel)
-M.timeoutSecs = 1000
+M.commandTimeoutMs = 60 * 1000
+M.flowistryVersion = "0.5.44"
 
 return M
