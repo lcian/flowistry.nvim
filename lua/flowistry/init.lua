@@ -1,4 +1,6 @@
 local logger = require("plenary.log").new({ plugin = "flowistry.nvim" })
+local constants = require("flowistry.constants")
+local Job = require("plenary.job")
 
 ---@class flowistry
 ---@field setup fun(opts: flowistry.Options)
@@ -15,14 +17,13 @@ local options = {}
 --- Default options
 ---@class flowistry.Options
 local defaults = {
-	flowistryCommand = "cargo",
 	registerDefaultKeymaps = true,
 }
 
 --- Sets up the plugin
 ---@param opts flowistry.Options
 M.setup = function(opts)
-	logger.info("loading flowistry.nvim")
+	logger.info("Loading flowistry.nvim")
 
 	options = vim.tbl_deep_extend("force", defaults, opts or {})
 
@@ -30,19 +31,27 @@ M.setup = function(opts)
 		require("flowistry.keymaps").setup()
 	end
 
-	logger.info("loaded flowistry.nvim")
+	logger.info("Loaded flowistry.nvim")
 end
 
 --- Calls `flowistry focus`
 M.focus = function()
-	vim.system({ options.flowistryCommand, "build" }, { text = true }, function(result)
-		if result.code ~= 0 then
-			print("error: got status code " .. result.code)
-		else
-			print("ok, got the following")
-			print(result.stdout)
-		end
-	end)
+	Job:new({
+		command = "cargo",
+		args = { "+" .. constants.rustToolchainChannel, "build" },
+		on_stdout = function(error, data)
+			print(vim.inspect(error))
+			print(vim.inspect(data))
+		end,
+		on_stderr = function(error, data)
+			print(vim.inspect(error))
+			print(vim.inspect(data))
+		end,
+		on_exit = function(j, return_val)
+			print(vim.inspect(return_val))
+			print(vim.inspect(j:result()))
+		end,
+	}):sync(constants.timeoutSecs)
 end
 
 return M
