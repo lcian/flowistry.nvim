@@ -23,15 +23,9 @@ local defaults = {
 ---@param opts flowistry.Options
 M.setup = function(opts)
   options = vim.tbl_deep_extend("force", defaults, opts or {})
-  local plenary_logger = require("plenary.log").new({ plugin = "flowistry.nvim", level = options.log_level })
-  local global_logger = require("flowistry.logger")
-  global_logger.trace = plenary_logger.trace
-  global_logger.debug = plenary_logger.debug
-  global_logger.warn = plenary_logger.warn
-  global_logger.info = plenary_logger.info
-  global_logger.error = plenary_logger.error
-  global_logger.fatal = plenary_logger.fatal
-  logger = global_logger
+
+  logger = require("flowistry.logger").setup({ level = options.log_level })
+  assert(logger ~= nil)
 
   logger.info("Setting up flowistry.nvim")
 
