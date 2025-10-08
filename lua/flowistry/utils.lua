@@ -21,7 +21,6 @@ end
 
 ---@return boolean: whether or not dependencies were successfully found/installed
 M.findOrInstallDependencies = function()
-  print(vim.inspect(logger))
   logger.debug("Finding/installing dependencies")
 
   local has_cargo = vim.fn.executable("cargo")
@@ -34,18 +33,18 @@ M.findOrInstallDependencies = function()
   local flowistryVersion = nil
   Job:new({
     command = "cargo",
-    args = { "+" .. constants.rustToolchainChannel, "flowistry", "-V" },
+    args = { "+" .. constants.rust_toolchain_channel, "flowistry", "-V" },
     on_stdout = function(_, data)
       flowistryVersion = (flowistryVersion or "") .. data
     end,
-  }):sync(constants.commandTimeoutMs)
+  }):sync(constants.command_timeout_ms)
 
   local should_install = false
   if flowistryVersion == nil then
     logger.warn("flowistry is not installed")
     should_install = true
-  elseif flowistryVersion ~= constants.flowistryVersion then
-    logger.warn("Found flowistry version " .. flowistryVersion .. " installed, but version " .. constants.flowistryVersion .. " is required")
+  elseif flowistryVersion ~= constants.flowistry_version then
+    logger.warn("Found flowistry version " .. flowistryVersion .. " installed, but version " .. constants.flowistry_version .. " is required")
     should_install = true
   end
 
@@ -59,11 +58,11 @@ M.findOrInstallDependencies = function()
   Job:new({
     command = "cargo",
     args = {
-      "+" .. constants.rustToolchainChannel,
+      "+" .. constants.rust_toolchain_channel,
       "install",
       "flowistry_ide",
       "--version",
-      constants.flowistryVersion,
+      constants.flowistry_version,
       "--locked",
       "--force",
     },
@@ -72,16 +71,24 @@ M.findOrInstallDependencies = function()
         install_success = false
       end
     end,
-  }):sync(constants.commandTimeoutMs)
+  }):sync(constants.command_timeout_ms)
 
   if not install_success then
     logger.error("Failed to install flowistry_ide")
     return false
   else
-    logger.info("Installed flowistry_ide version " .. constants.flowistryVersion)
+    logger.info("Installed flowistry_ide version " .. constants.flowistry_version)
   end
 
   return true
+end
+
+local LibDeflate = require("vendor.LibDeflate.LibDeflate")
+
+---@param input string
+M.decompress_gzip = function(input)
+  local deflate = input:sub(11, #input - 8)
+  return LibDeflate:DecompressDeflate(deflate)
 end
 
 return M
