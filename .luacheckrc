@@ -1,4 +1,5 @@
 include_files = { "lua/" }
+exclude_files = { "lua/vendor/" }
 self = false
 cache = true
 std = "lua54+nvim"
