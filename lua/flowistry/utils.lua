@@ -86,9 +86,62 @@ end
 local LibDeflate = require("vendor.LibDeflate.LibDeflate")
 
 ---@param input string
+--TODO: offload to subprocess if `gzip` or similar are available to do this async
 M.decompress_gzip = function(input)
   local deflate = input:sub(11, #input - 8)
   return LibDeflate:DecompressDeflate(deflate)
+end
+
+---@generic T
+---@param list T[]
+---@param predicate function(element T) -> boolean
+---@return T[]
+M.filter = function(list, predicate)
+  local res = {}
+  for _, value in ipairs(list) do
+    if predicate(value) then
+      table.insert(res, value)
+    end
+  end
+  return res
+end
+
+---@param ... boolean
+---@return boolean
+M.all = function(...)
+  local args = { ... }
+  for _, value in ipairs(args) do
+    if not value then
+      return false
+    end
+  end
+  return true
+end
+
+---@param ... boolean
+---@return boolean
+M.any = function(...)
+  local args = { ... }
+  for _, value in ipairs(args) do
+    if value then
+      return true
+    end
+  end
+  return false
+end
+
+---@param data flowistry.focusResponseOk
+---@param query flowistry.charPos
+---@return flowistry.placeInfo | nil
+M.focus_response_query = function(data, query)
+  ---@param place flowistry.placeInfo
+  return M.filter(data.place_info, function(place)
+    local a = query.line >= place.range.start.line
+    local b = query.line <= place.range["end"].line
+    local c = (query.line > place.range.start.line) or (place.range.start.column <= query.column)
+    local d = (query.line < place.range["end"].line) or (query.column <= place.range.start.column)
+    return M.all(a, b, c, d)
+  end)[1]
 end
 
 return M
