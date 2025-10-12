@@ -3,24 +3,12 @@ local constants = require("flowistry.constants")
 local logger = require("flowistry.logger")
 
 ---@class flowistry.utils
----@field findBufferWorkspaceRoot fun()
----@field findOrInstallDependencies fun()
+---@field find_or_install_dependencies fun()
 ---@return flowistry.utils
 local M = {}
 
-M.findBufferWorkspaceRoot = function()
-  logger.debug("Finding workspace root for current buffer")
-  local cwd = vim.fn.getcwd(0, 0)
-  local root = vim.fs.root(cwd, "Cargo.toml")
-  if root == nil then
-    logger.error("Workspace root not found")
-  end
-  logger.info("Found workspace root at " .. root)
-  return root
-end
-
 ---@return boolean: whether or not dependencies were successfully found/installed
-M.findOrInstallDependencies = function()
+function M.find_or_install_dependencies()
   logger.debug("Finding/installing dependencies")
 
   local has_cargo = vim.fn.executable("cargo")
@@ -37,7 +25,7 @@ M.findOrInstallDependencies = function()
     on_stdout = function(_, data)
       flowistryVersion = (flowistryVersion or "") .. data
     end,
-  }):sync(constants.command_timeout_ms)
+  }):sync(constants.general_timeout_ms)
 
   local should_install = false
   if flowistryVersion == nil then
@@ -71,7 +59,7 @@ M.findOrInstallDependencies = function()
         install_success = false
       end
     end,
-  }):sync(constants.command_timeout_ms)
+  }):sync(constants.general_timeout_ms)
 
   if not install_success then
     logger.error("Failed to install flowistry_ide")
@@ -86,9 +74,9 @@ end
 local LibDeflate = require("vendor.LibDeflate.LibDeflate")
 
 ---@param input string
---TODO: offload to subprocess if `gzip` or similar are available to do this async
 M.decompress_gzip = function(input)
-  local deflate = input:sub(11, #input - 8)
+  --TODO: offload to subprocess if `gzip` or similar are available to do this async
+  local deflate = input:sub(11, #input - 8) -- remove header
   return LibDeflate:DecompressDeflate(deflate)
 end
 
@@ -142,6 +130,32 @@ M.focus_response_query = function(data, query)
     local d = (query.line < place.range["end"].line) or (query.column <= place.range.start.column)
     return M.all(a, b, c, d)
   end)[1]
+end
+
+M.wait_for_rust_analyzer = function()
+  logger.debug("waiting for rust-analyzer")
+  -- this doesn't actually work but let's roll with it for now
+  vim.wait(constants.general_timeout_ms, function()
+    local status = vim.lsp.status()
+    logger.debug(status)
+    return status == ""
+  end, 100)
+  logger.debug("rust-analyzer done (allegedly)")
+end
+
+---Schedule a callback to run immediately on the neovim event loop.
+---The callback is wrapped with `vim.schedule_wrap`.
+---@param callback function
+M.schedule_immediate = function(callback)
+  local timer = (vim.uv or vim.loop).new_timer()
+  timer:start(
+    0,
+    0,
+    vim.schedule_wrap(function()
+      timer:stop()
+      callback()
+    end)
+  )
 end
 
 return M

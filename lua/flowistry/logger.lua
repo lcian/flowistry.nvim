@@ -16,12 +16,13 @@ M.warn = function(_) end
 M.error = function(_) end
 M.fatal = function(_) end
 
----@class flowistry.logger.Options
+---@class flowistry.logger.options
 ---@field level string
 
----@param options flowistry.logger.Options
-M.setup = function(options)
-  local logger = require("plenary.log").new({ plugin = "flowistry.nvim", level = options.level })
+---@param opts flowistry.logger.options?
+M.setup = function(opts)
+  local options = vim.tbl_deep_extend("force", { plugin = "flowistry.nvim", level = "info" }, opts or {})
+  local logger = require("plenary.log").new(options)
   M.trace = logger.trace
   M.debug = logger.debug
   M.warn = logger.warn
@@ -30,5 +31,7 @@ M.setup = function(options)
   M.fatal = logger.fatal
   return M
 end
+
+M.setup()
 
 return M
