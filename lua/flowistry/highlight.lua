@@ -6,10 +6,10 @@ local M = {}
 
 function M.setup()
   local links = {
-    [constants.highlight_groups.match] = "Search",
-    [constants.highlight_groups.current] = "IncSearch",
-    [constants.highlight_groups.backdrop] = "Comment",
-    [constants.highlight_groups.label] = "Substitute",
+    [constants.highlight.groups.mark] = "IncSearch",
+    [constants.highlight.groups.direct] = "Substitute",
+    [constants.highlight.groups.indirect] = "Search",
+    [constants.highlight.groups.backdrop] = "Comment",
   }
   for hl_group, link in pairs(links) do
     vim.api.nvim_set_hl(0, hl_group, { link = link, default = true })

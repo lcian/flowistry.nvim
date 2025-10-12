@@ -98,33 +98,31 @@ M.focus = function()
 
       utils.schedule_immediate(function()
         logger.debug("setting highlights")
-        for _, pos in ipairs(match.ranges) do
+        for _, pos in ipairs(match.slice) do
           vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
             end_row = pos["end"].line,
             end_col = pos["end"].column,
-            hl_group = constants.highlight_groups.current,
-            priority = 1000, -- let's try
-            strict = false, -- maybe remove
+            hl_group = constants.highlight.groups.indirect,
+            priority = constants.highlight.priority + 1,
+            strict = false,
           })
         end
         for _, pos in ipairs(match.direct_influence) do
           vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
             end_row = pos["end"].line,
             end_col = pos["end"].column,
-            hl_group = constants.highlight_groups.label,
-            priority = 1000, -- let's try
-            strict = false, -- maybe remove
+            hl_group = constants.highlight.groups.direct,
+            priority = constants.highlight.priority + 2,
+            strict = false,
           })
         end
-        for _, pos in ipairs(match.slice) do
-          vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
-            end_row = pos["end"].line,
-            end_col = pos["end"].column,
-            hl_group = constants.highlight_groups.match,
-            priority = 1000, -- let's try
-            strict = false, -- maybe remove
-          })
-        end
+        vim.api.nvim_buf_set_extmark(0, constants.namespace, match.range.start.line, match.range.start.column, {
+          end_row = match.range["end"].line,
+          end_col = match.range["end"].column,
+          hl_group = constants.highlight.groups.mark,
+          priority = constants.highlight.priority + 3,
+          strict = false,
+        })
         logger.debug("set highlights")
       end)
     end,

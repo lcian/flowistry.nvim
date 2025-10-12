@@ -5,11 +5,14 @@ local M = {
   rust_toolchain_components = { "rust-src", "rustc-dev", "llvm-tools-preview" },
   flowistry_version = "0.5.44",
   general_timeout_ms = 60 * 1000,
-  highlight_groups = {
-    backdrop = "FlowistryBackdrop", -- unused for now
-    match = "FlowistryMatch", -- slice
-    current = "FlowistryCurrent", -- ranges
-    label = "FlowistryLabel", -- direct influence
+  highlight = {
+    priority = 1000,
+    groups = {
+      mark = "FlowistryMark",
+      direct = "FlowistryDirect",
+      indirect = "FlowistryIndirect",
+      backdrop = "FlowistryBackdrop",
+    },
   },
 }
 
