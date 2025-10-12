@@ -1,4 +1,4 @@
-include_files = { "lua/" }
+include_files = { "lua/", "plugin/" }
 exclude_files = { "lua/vendor/" }
 self = false
 cache = true

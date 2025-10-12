@@ -18,7 +18,6 @@ end
 
 vim.api.nvim_create_user_command("Flowistry", function(opts)
   local subcommand = opts.fargs[1]
-  -- local subcommand_args = vim.list_slice(opts.fargs, 2)
 
   if not subcommand then
     logger.error("no subcommand provided")
