@@ -55,7 +55,7 @@ M.focus = function()
   local stderr_tbl = {}
   Job:new({
     command = "cargo",
-    args = { "+" .. constants.rust_toolchain_channel, "flowistry", "focus", filename, tostring(row), tostring(column) },
+    args = { "+" .. constants.rust.toolchain.channel, "flowistry", "focus", filename, tostring(row), tostring(column) },
     on_exit = function(_, code, _)
       logger.debug("flowistry exited with code " .. tostring(code))
       local stderr = table.concat(stderr_tbl)
@@ -89,6 +89,7 @@ M.focus = function()
       end
       logger.info("ok")
       local result = assert(focus_result.Ok)
+      logger.debug(vim.inspect(result.containers))
 
       local match = utils.focus_response_query(result, { line = row, column = column })
       if match == nil then
@@ -98,6 +99,15 @@ M.focus = function()
 
       utils.schedule_immediate(function()
         logger.debug("setting highlights")
+        for _, pos in ipairs(result.containers) do
+          vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
+            end_row = pos["end"].line,
+            end_col = pos["end"].column,
+            hl_group = constants.highlight.groups.backdrop,
+            priority = constants.highlight.priority,
+            strict = false,
+          })
+        end
         for _, pos in ipairs(match.slice) do
           vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
             end_row = pos["end"].line,

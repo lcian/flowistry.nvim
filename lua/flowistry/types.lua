@@ -4,7 +4,7 @@
 
 ---@class flowistry.focusResponseOk
 ---@field place_info flowistry.placeInfo[]
----@field containers flowistry.charRange[] function boundaries
+---@field containers flowistry.charRange[] [function body, function return type declaration, [function args declaration]?]
 
 ---@class flowistry.placeInfo
 ---@field range flowistry.charRange analysis target

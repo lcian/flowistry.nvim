@@ -1,10 +1,7 @@
 ---@class flowistry.constants
 ---@return flowistry.constants
 local M = {
-  rust_toolchain_channel = "nightly-2025-08-20",
-  rust_toolchain_components = { "rust-src", "rustc-dev", "llvm-tools-preview" },
-  flowistry_version = "0.5.44",
-  general_timeout_ms = 60 * 1000,
+  timeout = 60 * 1000,
   highlight = {
     priority = 1000,
     groups = {
@@ -12,6 +9,15 @@ local M = {
       direct = "FlowistryDirect",
       indirect = "FlowistryIndirect",
       backdrop = "FlowistryBackdrop",
+    },
+  },
+  flowistry = {
+    version = "0.5.44",
+  },
+  rust = {
+    toolchain = {
+      channel = "nightly-2025-08-20",
+      components = { "rust-src", "rustc-dev", "llvm-tools-preview" },
     },
   },
 }

@@ -25,18 +25,18 @@ function M.find_or_install_dependencies()
   local flowistryVersion = nil
   Job:new({
     command = "cargo",
-    args = { "+" .. constants.rust_toolchain_channel, "flowistry", "-V" },
+    args = { "+" .. constants.rust.toolchain.channel, "flowistry", "-V" },
     on_stdout = function(_, data)
       flowistryVersion = (flowistryVersion or "") .. data
     end,
-  }):sync(constants.general_timeout_ms)
+  }):sync(constants.timeout)
 
   local should_install = false
   if flowistryVersion == nil then
     logger.warn("flowistry is not installed")
     should_install = true
-  elseif flowistryVersion ~= constants.flowistry_version then
-    logger.warn("Found flowistry version " .. flowistryVersion .. " installed, but version " .. constants.flowistry_version .. " is required")
+  elseif flowistryVersion ~= constants.flowistry.version then
+    logger.warn("Found flowistry version " .. flowistryVersion .. " installed, but version " .. constants.flowistry.version .. " is required")
     should_install = true
   end
 
@@ -51,11 +51,11 @@ function M.find_or_install_dependencies()
   Job:new({
     command = "cargo",
     args = {
-      "+" .. constants.rust_toolchain_channel,
+      "+" .. constants.rust.toolchain.channel,
       "install",
       "flowistry_ide",
       "--version",
-      constants.flowistry_version,
+      constants.flowistry.version,
       "--locked",
       "--force",
     },
@@ -64,13 +64,13 @@ function M.find_or_install_dependencies()
         install_success = false
       end
     end,
-  }):sync(constants.general_timeout_ms)
+  }):sync(constants.timeout)
 
   if not install_success then
     logger.error("Failed to install flowistry_ide")
     return false
   else
-    logger.info("Installed flowistry_ide version " .. constants.flowistry_version)
+    logger.info("Installed flowistry_ide version " .. constants.flowistry.version)
   end
 
   has_deps = true
@@ -141,7 +141,7 @@ end
 M.wait_for_rust_analyzer = function()
   logger.debug("waiting for rust-analyzer")
   -- this doesn't actually work but let's roll with it for now
-  vim.wait(constants.general_timeout_ms, function()
+  vim.wait(constants.timeout, function()
     local status = vim.lsp.status()
     logger.debug(status)
     return status == ""
