@@ -30,7 +30,7 @@ M.setup = function(opts)
   logger = assert(require("flowistry.logger").setup({ level = options.log_level }))
   logger.debug("flowistry.focus()")
 
-  require("flowistry.highlight").setup()
+  require("flowistry.highlight").setup() -- TODO: pass opts to allow override
 
   if options.register_default_keymaps then
     require("flowistry.keymaps").setup()
@@ -89,7 +89,6 @@ M.focus = function()
       end
       logger.info("ok")
       local result = assert(focus_result.Ok)
-      -- print(vim.inspect(result))
 
       local match = utils.focus_response_query(result, { line = row, column = column })
       if match == nil then
