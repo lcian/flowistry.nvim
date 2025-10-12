@@ -13,7 +13,7 @@ end
 
 local command_names = {}
 for name in pairs(commands) do
-  command_names[#name + 1] = name
+  command_names[#command_names + 1] = name
 end
 
 vim.api.nvim_create_user_command("Flowistry", function(opts)

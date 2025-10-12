@@ -7,8 +7,12 @@ local logger = require("flowistry.logger")
 ---@return flowistry.utils
 local M = {}
 
+local has_deps = false
 ---@return boolean: whether or not dependencies were successfully found/installed
 function M.find_or_install_dependencies()
+  if has_deps then
+    return true
+  end
   logger.debug("Finding/installing dependencies")
 
   local has_cargo = vim.fn.executable("cargo")
@@ -38,6 +42,7 @@ function M.find_or_install_dependencies()
 
   if not should_install then
     logger.debug("flowistry is already installed with the right version")
+    has_deps = true
     return true
   end
   logger.debug("flowistry is not installed, or not the right version")
@@ -68,6 +73,7 @@ function M.find_or_install_dependencies()
     logger.info("Installed flowistry_ide version " .. constants.flowistry_version)
   end
 
+  has_deps = true
   return true
 end
 
@@ -127,7 +133,7 @@ M.focus_response_query = function(data, query)
     local a = query.line >= place.range.start.line
     local b = query.line <= place.range["end"].line
     local c = (query.line > place.range.start.line) or (place.range.start.column <= query.column)
-    local d = (query.line < place.range["end"].line) or (query.column <= place.range.start.column)
+    local d = (query.line < place.range["end"].line) or (query.column <= place.range["end"].column)
     return M.all(a, b, c, d)
   end)[1]
 end
