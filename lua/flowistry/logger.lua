@@ -1,5 +1,4 @@
 ---@class flowistry.logger
----@field setup fun(options)
 ---@field trace fun(message)
 ---@field debug fun(message)
 ---@field info fun(message)
@@ -9,12 +8,24 @@
 ---@return flowistry.logger
 local M = {}
 
-M.trace = function(_) end
-M.debug = function(_) end
-M.info = function(_) end
-M.warn = function(_) end
-M.error = function(_) end
-M.fatal = function(_) end
+M.trace = function(message)
+  local _ = message
+end
+M.debug = function(message)
+  local _ = message
+end
+M.info = function(message)
+  local _ = message
+end
+M.warn = function(message)
+  local _ = message
+end
+M.error = function(message)
+  local _ = message
+end
+M.fatal = function(message)
+  local _ = message
+end
 
 ---@class flowistry.logger.options
 ---@field level string
