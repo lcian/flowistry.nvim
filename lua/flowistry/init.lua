@@ -5,30 +5,32 @@ local logger = require("flowistry.logger")
 local utils = require("flowistry.utils")
 
 ---@class flowistry
----@field setup fun(opts: flowistry.Options)
+---@field setup fun(opts: flowistry.options)
 ---@field focus fun()
 ---@return flowistry
 local M = {}
 
----@class flowistry.Options
+---@class flowistry.options
 ---@field log_level string
 ---@field register_default_keymaps boolean
 local options = {}
 
 --- Default options
----@class flowistry.Options
+---@class flowistry.options
 local defaults = {
   log_level = "info",
   register_default_keymaps = true,
 }
 
 ---Sets up the plugin
----@param opts flowistry.Options
+---@param opts flowistry.options
 M.setup = function(opts)
   options = vim.tbl_deep_extend("force", defaults, opts or {})
 
   logger = assert(require("flowistry.logger").setup({ level = options.log_level }))
   logger.debug("flowistry.focus()")
+
+  require("flowistry.state").setup(options)
 
   require("flowistry.highlight").setup() -- TODO: pass opts to allow override
 
@@ -40,18 +42,21 @@ end
 ---Call `flowistry focus` with the current cursor position
 M.focus = function()
   logger.debug("flowistry.focus()")
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local row = cursor[1] - 1
+  local column = cursor[2]
+  M.focus_position(row, column)
+end
 
+M.focus_position = function(row, column)
   local ok = utils.find_or_install_dependencies()
   if not ok then
     return
   end
 
-  local filename = vim.api.nvim_buf_get_name(0)
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  local row = cursor[1] - 1
-  local column = cursor[2]
   logger.debug("calling flowistry.focus with row " .. row .. " and col " .. column)
 
+  local filename = vim.api.nvim_buf_get_name(0)
   local stderr_tbl = {}
   Job:new({
     command = "cargo",
