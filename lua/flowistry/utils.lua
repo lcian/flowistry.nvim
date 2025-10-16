@@ -1,4 +1,3 @@
-local base64 = require("vendor.base64")
 local constants = require("flowistry.constants")
 local logger = require("flowistry.logger")
 
@@ -80,15 +79,6 @@ function M.ensure_deps_and_immediately(callback)
       cb(has_deps)
     end)
   end)
-end
-
-local LibDeflate = require("vendor.LibDeflate.LibDeflate")
-
----@param input string
-M.decompress_gzip = function(input)
-  --TODO: offload to subprocess if `gzip` or similar are available to do this async
-  local deflate = input:sub(11, #input - 8) -- remove header
-  return LibDeflate:DecompressDeflate(deflate)
 end
 
 ---@generic T
@@ -183,82 +173,111 @@ end
 ---@field use_cache boolean?
 
 ---@param opts flowistry.utils.focusOpts
----@param cb function
+---@param _cb function
 function M.flowistry_focus(opts, _cb)
   opts.use_cache = opts.use_cache or true
 
   vim.system(
     { "cargo", "+" .. constants.rust.toolchain.channel, "flowistry", "focus", opts.filename, tostring(opts.position.line), tostring(opts.position.column) },
-    { text = true, timeout = constants.timeout },
+    { timeout = constants.timeout },
     function(res)
       if res.code ~= 0 then
-        logger.error("error calling flowistry focus (exit code: " .. res.code .. "):" .. (res.stderr or ""))
+        logger.command_error("cargo flowistry focus", res.code, res.stderr)
         return
       end
 
-      local decoded = base64.decode(res.stdout) -- TODO: consider using shell for this too
-      local json = M.decompress_gzip(decoded)
-      if json == nil then
-        logger.error("failed to decode flowistry focus output")
-        return
-      end
-      logger.info("decoded gzip")
+      local function render(json)
+        ---@type flowistry.focusResponse
+        local focus_result = vim.json.decode(json)
+        if focus_result.Err ~= nil then
+          -- TODO: change to error, possibly based on Err kind
+          logger.warn("got Err from flowistry focus: " .. focus_result.Err)
+          return
+        end
+        logger.info("ok")
+        local result = assert(focus_result.Ok)
+        logger.debug(vim.inspect(result.containers))
 
-      ---@type flowistry.focusResponse
-      local focus_result = vim.json.decode(json)
-      if focus_result.Err ~= nil then
-        -- TODO: change to error, possibly based on Err kind
-        logger.warn("got Err from flowistry focus: " .. focus_result.Err)
-        return
-      end
-      logger.info("ok")
-      local result = assert(focus_result.Ok)
-      logger.debug(vim.inspect(result.containers))
-
-      local match = M.focus_response_query(result, opts.position)
-      if match == nil then
-        logger.info("no matches, should return")
-        return
-      end
-
-      M.schedule_immediate(function()
-        logger.debug("setting highlights")
-        for _, pos in ipairs(result.containers) do
-          vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
-            end_row = pos["end"].line,
-            end_col = pos["end"].column,
-            hl_group = constants.highlight.groups.backdrop,
-            priority = constants.highlight.priority,
+        local match = M.focus_response_query(result, opts.position)
+        if match == nil then
+          logger.info("no matches, should return")
+          return
+        end
+        M.schedule_immediate(function()
+          logger.debug("setting highlights")
+          for _, pos in ipairs(result.containers) do
+            vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
+              end_row = pos["end"].line,
+              end_col = pos["end"].column,
+              hl_group = constants.highlight.groups.backdrop,
+              priority = constants.highlight.priority,
+              strict = false,
+            })
+          end
+          for _, pos in ipairs(match.slice) do
+            vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
+              end_row = pos["end"].line,
+              end_col = pos["end"].column,
+              hl_group = constants.highlight.groups.indirect,
+              priority = constants.highlight.priority + 1,
+              strict = false,
+            })
+          end
+          for _, pos in ipairs(match.direct_influence) do
+            vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
+              end_row = pos["end"].line,
+              end_col = pos["end"].column,
+              hl_group = constants.highlight.groups.direct,
+              priority = constants.highlight.priority + 2,
+              strict = false,
+            })
+          end
+          vim.api.nvim_buf_set_extmark(0, constants.namespace, match.range.start.line, match.range.start.column, {
+            end_row = match.range["end"].line,
+            end_col = match.range["end"].column,
+            hl_group = constants.highlight.groups.mark,
+            priority = constants.highlight.priority + 3,
             strict = false,
           })
+          logger.debug("set highlights")
+        end)
+      end
+
+      local function after_base64(compressed)
+        local has_gzip = vim.fn.executable("gzip")
+        if has_gzip == 0 then
+          logger.debug("doesn't have gzip, using vendored one")
+          local deflate = compressed:sub(11, #compressed - 8) -- remove header
+          local LibDeflate = require("vendor.LibDeflate.LibDeflate")
+          local json = LibDeflate:DecompressDeflate(deflate)
+          render(json)
+        else
+          vim.system({ "gzip", "-d" }, { timeout = constants.timeout, stdin = compressed }, function(g)
+            if g.code ~= 0 then
+              logger.command_error("gzip -d", g.code, g.stderr)
+              return
+            end
+            render(g.stdout)
+          end)
         end
-        for _, pos in ipairs(match.slice) do
-          vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
-            end_row = pos["end"].line,
-            end_col = pos["end"].column,
-            hl_group = constants.highlight.groups.indirect,
-            priority = constants.highlight.priority + 1,
-            strict = false,
-          })
-        end
-        for _, pos in ipairs(match.direct_influence) do
-          vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
-            end_row = pos["end"].line,
-            end_col = pos["end"].column,
-            hl_group = constants.highlight.groups.direct,
-            priority = constants.highlight.priority + 2,
-            strict = false,
-          })
-        end
-        vim.api.nvim_buf_set_extmark(0, constants.namespace, match.range.start.line, match.range.start.column, {
-          end_row = match.range["end"].line,
-          end_col = match.range["end"].column,
-          hl_group = constants.highlight.groups.mark,
-          priority = constants.highlight.priority + 3,
-          strict = false,
-        })
-        logger.debug("set highlights")
-      end)
+      end
+
+      local has_base64 = vim.fn.executable("base64")
+      if has_base64 == 0 then
+        logger.debug("doesn't have base64, using vendored one")
+        local base64 = require("vendor.base64")
+        local decoded = base64.decode(res.stdout)
+        after_base64(decoded)
+      else
+        logger.debug(res.stdout)
+        vim.system({ "base64", "-d" }, { timeout = constants.timeout, stdin = res.stdout }, function(b)
+          if b.code ~= 0 then
+            logger.command_error("base64 -d", b.code, b.stderr)
+            return
+          end
+          after_base64(b.stdout)
+        end)
+      end
     end
   )
 end

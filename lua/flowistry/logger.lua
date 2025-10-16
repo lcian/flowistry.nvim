@@ -11,20 +11,32 @@ local M = {}
 M.trace = function(message)
   local _ = message
 end
+
 M.debug = function(message)
   local _ = message
 end
+
 M.info = function(message)
   local _ = message
 end
+
 M.warn = function(message)
   local _ = message
 end
+
 M.error = function(message)
   local _ = message
 end
+
 M.fatal = function(message)
   local _ = message
+end
+
+---@param command string
+---@param code number
+---@param stderr string?
+M.command_error = function(command, code, stderr)
+  M.error(command .. " failed with exit code " .. code .. ": " .. (stderr or "[nothing on stderr]"))
 end
 
 ---@class flowistry.logger.options
