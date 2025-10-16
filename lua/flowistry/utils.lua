@@ -164,4 +164,12 @@ M.schedule_immediate = function(callback)
   )
 end
 
+---@return flowistry.charPos
+function M.get_cursor_pos()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local row = cursor[1] - 1
+  local column = cursor[2]
+  return { line = row, column = column }
+end
+
 return M

@@ -39,16 +39,23 @@ M.setup = function(opts)
   end
 end
 
----Call `flowistry focus` with the current cursor position
+M.focus_toggle = function() end
+M.focus_on = function() end
+M.focus_off = function() end
+M.set_mark = function() end
+M.remove_mark = function() end
+
+---TODO: remove
 M.focus = function()
-  logger.debug("flowistry.focus()")
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  local row = cursor[1] - 1
-  local column = cursor[2]
-  M.focus_position(row, column)
+  M.focus_position(utils.get_cursor_pos())
 end
 
-M.focus_position = function(row, column)
+---TODO: remove
+---@param p flowistry.charPos
+M.focus_position = function(p)
+  local row = p.line
+  local column = p.column
+
   local ok = utils.find_or_install_dependencies()
   if not ok then
     return
