@@ -1,4 +1,4 @@
-local Job = require("plenary.job")
+local base64 = require("vendor.base64")
 local constants = require("flowistry.constants")
 local logger = require("flowistry.logger")
 
@@ -7,50 +7,56 @@ local logger = require("flowistry.logger")
 ---@return flowistry.utils
 local M = {}
 
-local has_deps = false
----@return boolean: whether or not dependencies were successfully found/installed
-function M.find_or_install_dependencies()
-  if has_deps then
-    return true
+local has_deps = nil
+---Ensure that dependencies are installed, then schedule the callback to run immediately on the neovim event loop.
+---The callback receives the result of the dependency check and is wrapped with `vim.schedule_wrap`.
+---@param callback function(boolean)
+function M.ensure_deps_and_immediately(callback)
+  local cb = M.schedule_immediate_curried(callback)
+
+  if has_deps ~= nil then
+    cb(has_deps)
+    return
   end
-  logger.debug("Finding/installing dependencies")
+  logger.debug("finding/installing dependencies")
 
   local has_cargo = vim.fn.executable("cargo")
   if has_cargo == 0 then
     logger.error("flowistry requires cargo, please install it")
-    return false
+    has_deps = false
+    cb(has_deps)
+    return
   end
   logger.debug("cargo found")
 
-  local flowistryVersion = nil
-  Job:new({
-    command = "cargo",
-    args = { "+" .. constants.rust.toolchain.channel, "flowistry", "-V" },
-    on_stdout = function(_, data)
-      flowistryVersion = (flowistryVersion or "") .. data
-    end,
-  }):sync(constants.timeout)
+  vim.system({ "cargo", "+" .. constants.rust.toolchain.channel, "flowistry", "-V" }, {
+    text = true,
+    timeout = constants.timeout,
+  }, function(version_res)
+    local should_install = true
 
-  local should_install = false
-  if flowistryVersion == nil then
-    logger.warn("flowistry is not installed")
-    should_install = true
-  elseif flowistryVersion ~= constants.flowistry.version then
-    logger.warn("Found flowistry version " .. flowistryVersion .. " installed, but version " .. constants.flowistry.version .. " is required")
-    should_install = true
-  end
+    if version_res.code ~= 0 then
+      logger.debug("flowistry is not installed")
+    end
 
-  if not should_install then
-    logger.debug("flowistry is already installed with the right version")
-    has_deps = true
-    return true
-  end
-  logger.debug("flowistry is not installed, or not the right version")
+    if version_res.stdout then
+      local installed_version = version_res.stdout:gsub("%s+", "")
+      logger.debug("flowistry is installed with version " .. installed_version)
+      if installed_version ~= constants.flowistry.version then
+        logger.warn("found flowistry version " .. installed_version .. ", but version " .. constants.flowistry.version .. " is required")
+      else
+        should_install = false
+      end
+    end
 
-  local install_success = true
-  Job:new({
-    command = "cargo",
-    args = {
+    if not should_install then
+      has_deps = true
+      cb(has_deps)
+      return
+    end
+
+    vim.system({
+      "cargo",
       "+" .. constants.rust.toolchain.channel,
       "install",
       "flowistry_ide",
@@ -58,23 +64,22 @@ function M.find_or_install_dependencies()
       constants.flowistry.version,
       "--locked",
       "--force",
-    },
-    on_exit = function(_, code, _)
-      if code ~= 0 then
-        install_success = false
+    }, {
+      text = true,
+      timeout = constants.timeout,
+    }, function(res)
+      if res.code ~= 0 then
+        logger.error("failed to install flowistry_ide")
+        has_deps = false
+        cb(has_deps)
+        return
       end
-    end,
-  }):sync(constants.timeout)
 
-  if not install_success then
-    logger.error("Failed to install flowistry_ide")
-    return false
-  else
-    logger.info("Installed flowistry_ide version " .. constants.flowistry.version)
-  end
-
-  has_deps = true
-  return true
+      logger.info("installed flowistry_ide version " .. constants.flowistry.version)
+      has_deps = true
+      cb(has_deps)
+    end)
+  end)
 end
 
 local LibDeflate = require("vendor.LibDeflate.LibDeflate")
@@ -138,30 +143,30 @@ M.focus_response_query = function(data, query)
   end)[1]
 end
 
-M.wait_for_rust_analyzer = function()
-  logger.debug("waiting for rust-analyzer")
-  -- this doesn't actually work but let's roll with it for now
-  vim.wait(constants.timeout, function()
-    local status = vim.lsp.status()
-    logger.debug(status)
-    return status == ""
-  end, 100)
-  logger.debug("rust-analyzer done (allegedly)")
-end
-
 ---Schedule a callback to run immediately on the neovim event loop.
 ---The callback is wrapped with `vim.schedule_wrap`.
 ---@param callback function
-M.schedule_immediate = function(callback)
+---@param params any?
+M.schedule_immediate = function(callback, params)
+  ---@diagnostic disable-next-line
   local timer = (vim.uv or vim.loop).new_timer()
   timer:start(
     0,
     0,
     vim.schedule_wrap(function()
       timer:stop()
-      callback()
+      callback(params)
     end)
   )
+end
+
+---Schedule a callback to run immediately on the neovim event loop.
+---The callback is wrapped with `vim.schedule_wrap`.
+---Returns a function to pass params to.
+M.schedule_immediate_curried = function(callback)
+  return function(params)
+    M.schedule_immediate(callback, params)
+  end
 end
 
 ---@return flowistry.charPos
@@ -170,6 +175,92 @@ function M.get_cursor_pos()
   local row = cursor[1] - 1
   local column = cursor[2]
   return { line = row, column = column }
+end
+
+---@class flowistry.utils.focusOpts
+---@field filename string
+---@field position flowistry.charPos
+---@field use_cache boolean?
+
+---@param opts flowistry.utils.focusOpts
+---@param cb function
+function M.flowistry_focus(opts, _cb)
+  opts.use_cache = opts.use_cache or true
+
+  vim.system(
+    { "cargo", "+" .. constants.rust.toolchain.channel, "flowistry", "focus", opts.filename, tostring(opts.position.line), tostring(opts.position.column) },
+    { text = true, timeout = constants.timeout },
+    function(res)
+      if res.code ~= 0 then
+        logger.error("error calling flowistry focus (exit code: " .. res.code .. "):" .. (res.stderr or ""))
+        return
+      end
+
+      local decoded = base64.decode(res.stdout) -- TODO: consider using shell for this too
+      local json = M.decompress_gzip(decoded)
+      if json == nil then
+        logger.error("failed to decode flowistry focus output")
+        return
+      end
+      logger.info("decoded gzip")
+
+      ---@type flowistry.focusResponse
+      local focus_result = vim.json.decode(json)
+      if focus_result.Err ~= nil then
+        -- TODO: change to error, possibly based on Err kind
+        logger.warn("got Err from flowistry focus: " .. focus_result.Err)
+        return
+      end
+      logger.info("ok")
+      local result = assert(focus_result.Ok)
+      logger.debug(vim.inspect(result.containers))
+
+      local match = M.focus_response_query(result, opts.position)
+      if match == nil then
+        logger.info("no matches, should return")
+        return
+      end
+
+      M.schedule_immediate(function()
+        logger.debug("setting highlights")
+        for _, pos in ipairs(result.containers) do
+          vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
+            end_row = pos["end"].line,
+            end_col = pos["end"].column,
+            hl_group = constants.highlight.groups.backdrop,
+            priority = constants.highlight.priority,
+            strict = false,
+          })
+        end
+        for _, pos in ipairs(match.slice) do
+          vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
+            end_row = pos["end"].line,
+            end_col = pos["end"].column,
+            hl_group = constants.highlight.groups.indirect,
+            priority = constants.highlight.priority + 1,
+            strict = false,
+          })
+        end
+        for _, pos in ipairs(match.direct_influence) do
+          vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
+            end_row = pos["end"].line,
+            end_col = pos["end"].column,
+            hl_group = constants.highlight.groups.direct,
+            priority = constants.highlight.priority + 2,
+            strict = false,
+          })
+        end
+        vim.api.nvim_buf_set_extmark(0, constants.namespace, match.range.start.line, match.range.start.column, {
+          end_row = match.range["end"].line,
+          end_col = match.range["end"].column,
+          hl_group = constants.highlight.groups.mark,
+          priority = constants.highlight.priority + 3,
+          strict = false,
+        })
+        logger.debug("set highlights")
+      end)
+    end
+  )
 end
 
 return M

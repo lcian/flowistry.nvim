@@ -1,6 +1,3 @@
-local Job = require("plenary.job")
-local base64 = require("vendor.base64")
-local constants = require("flowistry.constants")
 local logger = require("flowistry.logger")
 local utils = require("flowistry.utils")
 
@@ -44,108 +41,20 @@ M.remove_mark = function() end
 
 ---TODO: remove
 M.focus = function()
-  M.focus_position(utils.get_cursor_pos())
+  M.render(utils.get_cursor_pos())
 end
 
----TODO: remove
----@param p flowistry.charPos
-M.focus_position = function(p)
-  local row = p.line
-  local column = p.column
-
-  local ok = utils.find_or_install_dependencies()
-  if not ok then
-    return
-  end
-
-  logger.debug("calling flowistry.focus with row " .. row .. " and col " .. column)
-
-  local filename = vim.api.nvim_buf_get_name(0)
-  local stderr_tbl = {}
-  Job:new({
-    command = "cargo",
-    args = { "+" .. constants.rust.toolchain.channel, "flowistry", "focus", filename, tostring(row), tostring(column) },
-    on_exit = function(_, code, _)
-      logger.debug("flowistry exited with code " .. tostring(code))
-      local stderr = table.concat(stderr_tbl)
-      if stderr ~= "" then
-        logger.error("error calling flowistry focus:\n" .. stderr)
-        return
-      end
-    end,
-    on_stderr = function(_, line, _)
-      logger.info("got some stderr")
-      table.insert(stderr_tbl, line)
-    end,
-    on_stdout = function(_, line, _)
-      logger.info("got some stdout: " .. line)
-      local decoded = base64.decode(line) -- TODO: consider using shell for this too
-      logger.info("decoded")
-
-      local json = utils.decompress_gzip(decoded)
-      if json == nil then
-        logger.error("failed to decode flowistry focus output")
-        return
-      end
-      logger.info("decoded gzip")
-
-      ---@type flowistry.focusResponse
-      local focus_result = vim.json.decode(json)
-      if focus_result.Err ~= nil then
-        -- TODO: change to error, possibly based on Err kind
-        logger.warn("got Err from flowistry focus: " .. focus_result.Err)
-        return
-      end
-      logger.info("ok")
-      local result = assert(focus_result.Ok)
-      logger.debug(vim.inspect(result.containers))
-
-      local match = utils.focus_response_query(result, { line = row, column = column })
-      if match == nil then
-        logger.info("no matches, should return")
-        return
-      end
-
-      utils.schedule_immediate(function()
-        logger.debug("setting highlights")
-        for _, pos in ipairs(result.containers) do
-          vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
-            end_row = pos["end"].line,
-            end_col = pos["end"].column,
-            hl_group = constants.highlight.groups.backdrop,
-            priority = constants.highlight.priority,
-            strict = false,
-          })
-        end
-        for _, pos in ipairs(match.slice) do
-          vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
-            end_row = pos["end"].line,
-            end_col = pos["end"].column,
-            hl_group = constants.highlight.groups.indirect,
-            priority = constants.highlight.priority + 1,
-            strict = false,
-          })
-        end
-        for _, pos in ipairs(match.direct_influence) do
-          vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
-            end_row = pos["end"].line,
-            end_col = pos["end"].column,
-            hl_group = constants.highlight.groups.direct,
-            priority = constants.highlight.priority + 2,
-            strict = false,
-          })
-        end
-        vim.api.nvim_buf_set_extmark(0, constants.namespace, match.range.start.line, match.range.start.column, {
-          end_row = match.range["end"].line,
-          end_col = match.range["end"].column,
-          hl_group = constants.highlight.groups.mark,
-          priority = constants.highlight.priority + 3,
-          strict = false,
-        })
-        logger.debug("set highlights")
-      end)
-    end,
-  }):start()
+---@param position flowistry.charPos
+M.render = function(position)
+  utils.ensure_deps_and_immediately(function(deps_ok)
+    if not deps_ok then
+      return
+    end
+    utils.flowistry_focus({
+      filename = vim.api.nvim_buf_get_name(0),
+      position = position,
+    }, function(_ok, _response) end)
+  end)
 end
 
 return M
