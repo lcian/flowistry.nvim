@@ -1,16 +1,17 @@
 ---@class flowistry.state
 ---@field options flowistry.options current options
----@field cache table[string, flowistry.focusResponseOk] cache for analysis results
+---@field cache table[string, flowistry.focusResponseOk] cache for analysis results - unused for now
 ---@field enabled boolean? buffer local - is focus mode enabled
 ---@field mark flowistry.charPos? buffer local - mark position
----@field timer any? buffer local - render timer
+---@field autocmd integer? buffer local - render autocmd
+---@field last_pos flowistry.charPos? buffer local - last position we focused on
 ---@return flowistry.state
 local M = {
   options = {},
   cache = {},
 }
 
-local buflocals = { "enabled", "mark", "timer" }
+local buflocals = { "enabled", "mark", "autocmd", "last_pos" }
 
 local meta = {
   __index = function(table, index)

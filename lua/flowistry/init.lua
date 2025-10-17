@@ -1,4 +1,6 @@
+local constants = require("flowistry.constants")
 local logger = require("flowistry.logger")
+local state = require("flowistry.state")
 local utils = require("flowistry.utils")
 
 ---@class flowistry
@@ -18,7 +20,7 @@ local defaults = {
 
 ---Sets up the plugin
 ---@param opts flowistry.options
-M.setup = function(opts)
+function M.setup(opts)
   local options = vim.tbl_deep_extend("force", defaults, opts or {})
 
   logger = assert(require("flowistry.logger").setup({ level = options.log_level }))
@@ -33,23 +35,56 @@ M.setup = function(opts)
   end
 end
 
-M.focus_toggle = function() end
-M.focus_on = function() end
-M.focus_off = function() end
-M.set_mark = function() end
-M.remove_mark = function() end
-
----TODO: remove
-M.focus = function()
-  M.render(utils.get_cursor_pos())
+function M.focus_toggle()
+  if state.enabled then
+    M.focus_off()
+  else
+    M.focus_on()
+  end
 end
 
----@param position flowistry.charPos
-M.render = function(position)
-  utils.ensure_deps_and_immediately(function(deps_ok)
+function M.focus_on()
+  state.enabled = true
+  state.autocmd = vim.api.nvim_create_autocmd({ "CursorMoved" }, {
+    group = constants.augroup,
+    buffer = 0,
+    callback = M.render,
+  })
+  M.render()
+end
+
+function M.focus_off()
+  state.enabled = false
+  vim.api.nvim_del_autocmd(state.autocmd)
+end
+
+function M.mark_set()
+  state.mark = utils.get_cursor_pos()
+end
+
+function M.mark_remove()
+  state.mark = nil
+end
+
+function M.render()
+  if not state.enabled then
+    return
+  end
+  local position = state.mark or utils.get_cursor_pos()
+  if position == state.last_position then
+    return
+  end
+  state.last_position = position
+  vim.api.nvim_buf_clear_namespace(0, constants.namespace, 0, -1)
+  utils.ensure_deps_then(function(deps_ok)
     if not deps_ok then
       return
     end
+    --utils.call_flowistry_then(function(ok, res)
+    --  if not ok then
+    --    return
+    --  end
+    --end)
     utils.flowistry_focus({
       filename = vim.api.nvim_buf_get_name(0),
       position = position,

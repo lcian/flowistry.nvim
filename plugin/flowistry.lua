@@ -2,11 +2,6 @@ local flowistry = require("flowistry")
 local logger = require("flowistry.logger")
 
 local commands = {
-  ---TODO: remove
-  ["focus"] = function()
-    flowistry.focus()
-  end,
-
   ["focus toggle"] = function()
     flowistry.focus_toggle()
   end,
@@ -19,12 +14,12 @@ local commands = {
     flowistry.focus_off()
   end,
 
-  ["set_mark"] = function()
-    flowistry.set_mark()
+  ["mark set"] = function()
+    flowistry.mark_set()
   end,
 
-  ["remove_mark"] = function()
-    flowistry.remove_mark()
+  ["mark remove"] = function()
+    flowistry.mark_remove()
   end,
 }
 

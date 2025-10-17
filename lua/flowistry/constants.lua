@@ -23,6 +23,7 @@ local M = {
 }
 
 function M.setup()
+  M.augroup = vim.api.nvim_create_augroup("flowistry", { clear = true })
   M.namespace = vim.api.nvim_create_namespace("flowistry")
 end
 

@@ -10,7 +10,7 @@ local has_deps = nil
 ---Ensure that dependencies are installed, then schedule the callback to run immediately on the neovim event loop.
 ---The callback receives the result of the dependency check and is wrapped with `vim.schedule_wrap`.
 ---@param callback function(boolean)
-function M.ensure_deps_and_immediately(callback)
+function M.ensure_deps_then(callback)
   local cb = M.schedule_immediate_curried(callback)
 
   if has_deps ~= nil then

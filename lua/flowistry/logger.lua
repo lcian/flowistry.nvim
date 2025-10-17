@@ -33,7 +33,7 @@ M.fatal = function(message)
 end
 
 ---@param command string
----@param code number
+---@param code integer
 ---@param stderr string?
 M.command_error = function(command, code, stderr)
   M.error(command .. " failed with exit code " .. code .. ": " .. (stderr or "[nothing on stderr]"))

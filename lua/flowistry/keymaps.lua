@@ -14,7 +14,9 @@ M.setup = function()
     logger.info("Setting up default keymaps using which-key")
     wk.add({
       { "<leader>n", group = "Flowistry" },
-      { "<leader>nf", "<cmd>Flowistry focus<cr>", desc = "Focus", mode = "n" },
+      { "<leader>nf", "<cmd>Flowistry focus toggle<cr>", desc = "Toggle focus", mode = "n" },
+      { "<leader>nm", "<cmd>Flowistry mark set<cr>", desc = "Set mark", mode = "n" },
+      { "<leader>nr", "<cmd>Flowistry mark remove<cr>", desc = "Remove mark", mode = "n" },
     })
   else
     logger.info("Setting up default keymaps using vim api")
