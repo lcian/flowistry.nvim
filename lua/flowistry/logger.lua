@@ -35,7 +35,16 @@ function M.fatal(message)
   local _ = message
 end
 
-local highlight = {
+local level_to_int = {
+  trace = 1,
+  debug = 2,
+  info = 3,
+  warn = 4,
+  error = 5,
+  fatal = 6,
+}
+
+local level_to_highlight = {
   trace = "Comment",
   debug = "Comment",
   info = "None",
@@ -48,7 +57,7 @@ local highlight = {
 ---@param log_level string
 ---@param message string
 function M._log(log_level, message)
-  if log_level < level then
+  if level_to_int[log_level] < level_to_int[level] then
     return
   end
 
@@ -57,8 +66,8 @@ function M._log(log_level, message)
   local code_line = debug_info.currentline
 
   local function emit()
-    vim.cmd(string.format("echohl %s", highlight[log_level]))
-    local formatted = string.format("[%-6s%s] %s: %s : %s", log_level:upper(), os.date("%H:%M:%S"), code_path, code_line, message)
+    vim.cmd(string.format("echohl %s", level_to_highlight[log_level]))
+    local formatted = string.format("[%-6s%s] %s:%s : %s", log_level:upper(), os.date("%H:%M:%S"), code_path, code_line, message)
     for _, line in ipairs(vim.split(formatted, "\n")) do
       local formatted_line = string.format("[flowistry.nvim] %s", vim.fn.escape(line, [["\]]))
       ---@diagnostic disable-next-line

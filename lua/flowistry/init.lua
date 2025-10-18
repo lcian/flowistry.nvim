@@ -81,15 +81,59 @@ function M.render()
     if not deps_ok then
       return
     end
-    --utils.call_flowistry_then(function(ok, res)
-    --  if not ok then
-    --    return
-    --  end
-    --end)
-    utils.flowistry_focus({
+    utils.call_flowistry_then({
       filename = vim.api.nvim_buf_get_name(0),
       position = position,
-    }, function(_ok, _response) end)
+    }, function(ok, result)
+      if not ok or not result then
+        return
+      end
+
+      local match = utils.focus_response_query(result, position)
+      if match == nil then
+        logger.info("no matches, should return")
+        return
+      end
+
+      utils.immediately(function()
+        logger.debug("setting highlights")
+        for _, pos in ipairs(result.containers) do
+          vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
+            end_row = pos["end"].line,
+            end_col = pos["end"].column,
+            hl_group = constants.highlight.groups.backdrop,
+            priority = constants.highlight.priority,
+            strict = false,
+          })
+        end
+        for _, pos in ipairs(match.slice) do
+          vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
+            end_row = pos["end"].line,
+            end_col = pos["end"].column,
+            hl_group = constants.highlight.groups.indirect,
+            priority = constants.highlight.priority + 1,
+            strict = false,
+          })
+        end
+        for _, pos in ipairs(match.direct_influence) do
+          vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
+            end_row = pos["end"].line,
+            end_col = pos["end"].column,
+            hl_group = constants.highlight.groups.direct,
+            priority = constants.highlight.priority + 2,
+            strict = false,
+          })
+        end
+        vim.api.nvim_buf_set_extmark(0, constants.namespace, match.range.start.line, match.range.start.column, {
+          end_row = match.range["end"].line,
+          end_col = match.range["end"].column,
+          hl_group = constants.highlight.groups.mark,
+          priority = constants.highlight.priority + 3,
+          strict = false,
+        })
+        logger.debug("set highlights")
+      end)
+    end)
   end)
 end
 

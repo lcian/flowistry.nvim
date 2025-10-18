@@ -12,7 +12,7 @@ local has_deps = nil
 ---@param callback function(boolean)
 function M.ensure_deps_then(callback)
   local cb = function(params)
-    M.schedule_immediate(callback, params)
+    M.immediately(callback, params)
   end
 
   if has_deps ~= nil then
@@ -115,7 +115,7 @@ end
 ---The callback is wrapped with `vim.schedule_wrap`.
 ---@param callback function
 ---@param params any?
-function M.schedule_immediate(callback, params)
+function M.immediately(callback, params)
   ---@diagnostic disable-next-line
   local timer = (vim.uv or vim.loop).new_timer()
   timer:start(
@@ -142,8 +142,8 @@ end
 ---@field use_cache boolean?
 
 ---@param opts flowistry.utils.focusOpts
----@param _cb function
-function M.flowistry_focus(opts, _cb)
+---@param callback function(boolean, flowistry.focusResponse?)
+function M.call_flowistry_then(opts, callback)
   opts.use_cache = opts.use_cache or true
 
   vim.system(
@@ -155,61 +155,17 @@ function M.flowistry_focus(opts, _cb)
         return
       end
 
-      local function render(json)
+      local function after_gzip(json)
         ---@type flowistry.focusResponse
         local focus_result = vim.json.decode(json)
         if focus_result.Err ~= nil then
           -- TODO: change to error, possibly based on Err kind
           logger.warn("got Err from flowistry focus: " .. focus_result.Err)
+          callback(false, nil)
           return
         end
-        logger.info("ok")
         local result = assert(focus_result.Ok)
-        logger.debug(vim.inspect(result.containers))
-
-        local match = M.focus_response_query(result, opts.position)
-        if match == nil then
-          logger.info("no matches, should return")
-          return
-        end
-        M.schedule_immediate(function()
-          logger.debug("setting highlights")
-          for _, pos in ipairs(result.containers) do
-            vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
-              end_row = pos["end"].line,
-              end_col = pos["end"].column,
-              hl_group = constants.highlight.groups.backdrop,
-              priority = constants.highlight.priority,
-              strict = false,
-            })
-          end
-          for _, pos in ipairs(match.slice) do
-            vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
-              end_row = pos["end"].line,
-              end_col = pos["end"].column,
-              hl_group = constants.highlight.groups.indirect,
-              priority = constants.highlight.priority + 1,
-              strict = false,
-            })
-          end
-          for _, pos in ipairs(match.direct_influence) do
-            vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
-              end_row = pos["end"].line,
-              end_col = pos["end"].column,
-              hl_group = constants.highlight.groups.direct,
-              priority = constants.highlight.priority + 2,
-              strict = false,
-            })
-          end
-          vim.api.nvim_buf_set_extmark(0, constants.namespace, match.range.start.line, match.range.start.column, {
-            end_row = match.range["end"].line,
-            end_col = match.range["end"].column,
-            hl_group = constants.highlight.groups.mark,
-            priority = constants.highlight.priority + 3,
-            strict = false,
-          })
-          logger.debug("set highlights")
-        end)
+        callback(true, result)
       end
 
       local function after_base64(compressed)
@@ -219,14 +175,14 @@ function M.flowistry_focus(opts, _cb)
           local deflate = compressed:sub(11, #compressed - 8) -- remove header
           local LibDeflate = require("vendor.LibDeflate.LibDeflate")
           local json = LibDeflate:DecompressDeflate(deflate)
-          render(json)
+          after_gzip(json)
         else
           vim.system({ "gzip", "-d" }, { timeout = constants.timeout, stdin = compressed }, function(g)
             if g.code ~= 0 then
               logger.command_error("gzip -d", g.code, g.stderr)
               return
             end
-            render(g.stdout)
+            after_gzip(g.stdout)
           end)
         end
       end
@@ -238,7 +194,6 @@ function M.flowistry_focus(opts, _cb)
         local decoded = base64.decode(res.stdout)
         after_base64(decoded)
       else
-        logger.debug(res.stdout)
         vim.system({ "base64", "-d" }, { timeout = constants.timeout, stdin = res.stdout }, function(b)
           if b.code ~= 0 then
             logger.command_error("base64 -d", b.code, b.stderr)
