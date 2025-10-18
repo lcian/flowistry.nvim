@@ -23,8 +23,8 @@ local defaults = {
 function M.setup(opts)
   local options = vim.tbl_deep_extend("force", defaults, opts or {})
 
-  logger = assert(require("flowistry.logger").setup({ level = options.log_level }))
-  logger.debug("flowistry.focus()")
+  logger.setup({ level = options.log_level })
+  logger.debug("flowistry.setup()")
 
   require("flowistry.state").setup(options)
 
@@ -56,6 +56,7 @@ end
 function M.focus_off()
   state.enabled = false
   vim.api.nvim_del_autocmd(state.autocmd)
+  vim.api.nvim_buf_clear_namespace(0, constants.namespace, 0, -1)
 end
 
 function M.mark_set()

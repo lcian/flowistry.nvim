@@ -1,7 +1,6 @@
 local constants = require("flowistry.constants")
 
 ---@class flowistry.highlight
----@field setup function
 local M = {}
 
 function M.setup()

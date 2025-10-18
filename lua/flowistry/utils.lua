@@ -11,7 +11,9 @@ local has_deps = nil
 ---The callback receives the result of the dependency check and is wrapped with `vim.schedule_wrap`.
 ---@param callback function(boolean)
 function M.ensure_deps_then(callback)
-  local cb = M.schedule_immediate_curried(callback)
+  local cb = function(params)
+    M.schedule_immediate(callback, params)
+  end
 
   if has_deps ~= nil then
     cb(has_deps)
@@ -85,7 +87,7 @@ end
 ---@param list T[]
 ---@param predicate function(element T) -> boolean
 ---@return T[]
-M.filter = function(list, predicate)
+function M.filter(list, predicate)
   local res = {}
   for _, value in ipairs(list) do
     if predicate(value) then
@@ -95,41 +97,17 @@ M.filter = function(list, predicate)
   return res
 end
 
----@param ... boolean
----@return boolean
-M.all = function(...)
-  local args = { ... }
-  for _, value in ipairs(args) do
-    if not value then
-      return false
-    end
-  end
-  return true
-end
-
----@param ... boolean
----@return boolean
-M.any = function(...)
-  local args = { ... }
-  for _, value in ipairs(args) do
-    if value then
-      return true
-    end
-  end
-  return false
-end
-
----@param data flowistry.focusResponseOk
+---@param data flowistry.focusResponse.ok
 ---@param query flowistry.charPos
 ---@return flowistry.placeInfo | nil
-M.focus_response_query = function(data, query)
+function M.focus_response_query(data, query)
   ---@param place flowistry.placeInfo
   return M.filter(data.place_info, function(place)
     local a = query.line >= place.range.start.line
     local b = query.line <= place.range["end"].line
     local c = (query.line > place.range.start.line) or (place.range.start.column <= query.column)
     local d = (query.line < place.range["end"].line) or (query.column <= place.range["end"].column)
-    return M.all(a, b, c, d)
+    return a and b and c and d
   end)[1]
 end
 
@@ -137,7 +115,7 @@ end
 ---The callback is wrapped with `vim.schedule_wrap`.
 ---@param callback function
 ---@param params any?
-M.schedule_immediate = function(callback, params)
+function M.schedule_immediate(callback, params)
   ---@diagnostic disable-next-line
   local timer = (vim.uv or vim.loop).new_timer()
   timer:start(
@@ -148,15 +126,6 @@ M.schedule_immediate = function(callback, params)
       callback(params)
     end)
   )
-end
-
----Schedule a callback to run immediately on the neovim event loop.
----The callback is wrapped with `vim.schedule_wrap`.
----Returns a function to pass params to.
-M.schedule_immediate_curried = function(callback)
-  return function(params)
-    M.schedule_immediate(callback, params)
-  end
 end
 
 ---@return flowistry.charPos

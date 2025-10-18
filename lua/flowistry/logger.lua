@@ -1,60 +1,85 @@
 ---@class flowistry.logger
----@field trace fun(message)
----@field debug fun(message)
----@field info fun(message)
----@field warn fun(message)
----@field error fun(message)
----@field fatal fun(message)
 ---@return flowistry.logger
 local M = {}
 
-M.trace = function(message)
-  local _ = message
+local level = "info"
+
+function M.trace(message)
+  M._log("trace", message)
 end
 
-M.debug = function(message)
-  local _ = message
+function M.debug(message)
+  M._log("debug", message)
 end
 
-M.info = function(message)
-  local _ = message
+function M.info(message)
+  M._log("info", message)
 end
 
-M.warn = function(message)
-  local _ = message
+function M.warn(message)
+  M._log("warn", message)
 end
 
-M.error = function(message)
-  local _ = message
-end
-
-M.fatal = function(message)
-  local _ = message
+function M.error(message)
+  M._log("error", message)
 end
 
 ---@param command string
 ---@param code integer
 ---@param stderr string?
-M.command_error = function(command, code, stderr)
-  M.error(command .. " failed with exit code " .. code .. ": " .. (stderr or "[nothing on stderr]"))
+function M.command_error(command, code, stderr)
+  M._log("error", command .. " failed with exit code " .. code .. ": " .. (stderr or "[nothing on stderr]"))
+end
+
+function M.fatal(message)
+  local _ = message
+end
+
+local highlight = {
+  trace = "Comment",
+  debug = "Comment",
+  info = "None",
+  warn = "WarningMsg",
+  error = "ErrorMsg",
+  fatal = "ErrorMsg",
+}
+
+---@private
+---@param log_level string
+---@param message string
+function M._log(log_level, message)
+  local debug_info = debug.getinfo(3, "Sl")
+  local code_path = debug_info.source:sub(2)
+  local code_line = debug_info.currentline
+
+  local function emit()
+    vim.cmd(string.format("echohl %s", highlight[log_level]))
+    local formatted = string.format("[%-6s%s] %s: %s : %s", log_level:upper(), os.date("%H:%M:%S"), code_path, code_line, message)
+    for _, line in ipairs(vim.split(formatted, "\n")) do
+      local formatted_line = string.format("[flowistry.nvim] %s", vim.fn.escape(line, [["\]]))
+      ---@diagnostic disable-next-line
+      local ok = pcall(vim.cmd, string.format([[echom "%s"]], formatted_line))
+      if not ok then
+        ---@diagnostic disable-next-line
+        vim.api.nvim_out_write(formatted_line .. "\n")
+      end
+    end
+    vim.cmd("echohl NONE")
+  end
+
+  if vim.in_fast_event() then
+    vim.schedule(emit)
+  else
+    emit()
+  end
 end
 
 ---@class flowistry.logger.options
 ---@field level string
 
 ---@param opts flowistry.logger.options?
-M.setup = function(opts)
-  local options = vim.tbl_deep_extend("force", { plugin = "flowistry.nvim", level = "info" }, opts or {})
-  local logger = require("plenary.log").new(options)
-  M.trace = logger.trace
-  M.debug = logger.debug
-  M.warn = logger.warn
-  M.info = logger.info
-  M.error = logger.error
-  M.fatal = logger.fatal
-  return M
+function M.setup(opts)
+  level = (opts or {}).level or level
 end
-
-M.setup()
 
 return M

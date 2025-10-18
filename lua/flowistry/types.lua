@@ -1,8 +1,8 @@
 ---@class flowistry.focusResponse
----@field Ok flowistry.focusResponseOk?
+---@field Ok flowistry.focusResponse.ok?
 ---@field Err string?
 
----@class flowistry.focusResponseOk
+---@class flowistry.focusResponse.ok
 ---@field place_info flowistry.placeInfo[]
 ---@field containers flowistry.charRange[] [function body, function return type declaration, [function args declaration]?]
 
