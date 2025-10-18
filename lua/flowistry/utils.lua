@@ -130,6 +130,7 @@ end
 
 ---@return flowistry.charPos
 function M.get_cursor_pos()
+  logger.debug("get_cursor_pos()")
   local cursor = vim.api.nvim_win_get_cursor(0)
   local row = cursor[1] - 1
   local column = cursor[2]

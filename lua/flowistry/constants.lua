@@ -4,6 +4,7 @@ local M = {
   timeout = 60 * 1000,
   highlight = {
     priority = 1000,
+    ---@type table<flowistry.highlight.group, string>
     groups = {
       mark = "FlowistryMark",
       direct = "FlowistryDirect",

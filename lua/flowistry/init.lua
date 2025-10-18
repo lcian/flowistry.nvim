@@ -12,25 +12,32 @@ local M = {}
 local defaults = {
   log_level = "info",
   register_default_keymaps = true,
+  highlight = {
+    mark = { link = "IncSearch", default = true },
+    direct = { link = "Substitute", default = true },
+    indirect = { link = "Search", default = true },
+    backdrop = { link = "Comment", default = true },
+  },
 }
 
 ---@class flowistry.options
 ---@field log_level string
 ---@field register_default_keymaps boolean
+---@field highlight flowistry.highlight.options
 
 ---Sets up the plugin
----@param opts flowistry.options
-function M.setup(opts)
-  local options = vim.tbl_deep_extend("force", defaults, opts or {})
+---@param options flowistry.options
+function M.setup(options)
+  local opts = vim.tbl_deep_extend("force", defaults, options or {})
 
-  logger.setup({ level = options.log_level })
+  logger.setup({ level = opts.log_level })
   logger.debug("flowistry.setup()")
 
-  require("flowistry.state").setup(options)
+  require("flowistry.state").setup(opts)
 
-  require("flowistry.highlight").setup() -- TODO: pass opts to allow override
+  require("flowistry.highlight").setup(opts.highlight)
 
-  if options.register_default_keymaps then
+  if opts.register_default_keymaps then
     require("flowistry.keymaps").setup()
   end
 end
@@ -72,7 +79,7 @@ function M.render()
     return
   end
   local position = state.mark or utils.get_cursor_pos()
-  if position == state.last_position then
+  if vim.deep_equal(position, state.last_position) then
     return
   end
   state.last_position = position

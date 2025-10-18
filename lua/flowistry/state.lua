@@ -1,6 +1,6 @@
 ---@class flowistry.state
 ---@field options flowistry.options current options
----@field cache table[string, flowistry.focusResponse.ok] cache for analysis results - unused for now
+---@field cache table<string, flowistry.focusResponse.ok> cache for analysis results - unused for now
 ---@field enabled boolean? buffer local - is focus mode enabled
 ---@field mark flowistry.charPos? buffer local - mark position
 ---@field autocmd integer? buffer local - render autocmd

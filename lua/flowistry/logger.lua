@@ -31,17 +31,12 @@ function M.command_error(command, code, stderr)
   M._log("error", command .. " failed with exit code " .. code .. ": " .. (stderr or "[nothing on stderr]"))
 end
 
-function M.fatal(message)
-  local _ = message
-end
-
 local level_to_int = {
   trace = 1,
   debug = 2,
   info = 3,
   warn = 4,
   error = 5,
-  fatal = 6,
 }
 
 local level_to_highlight = {
@@ -50,7 +45,6 @@ local level_to_highlight = {
   info = "None",
   warn = "WarningMsg",
   error = "ErrorMsg",
-  fatal = "ErrorMsg",
 }
 
 ---@private

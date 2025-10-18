@@ -1,7 +1,6 @@
 local logger = require("flowistry.logger")
 
 ---@class flowistry.keymaps
----@field setup fun()
 ---@return flowistry.keymaps
 local M = {}
 
@@ -26,7 +25,6 @@ local keymaps = {
   },
 }
 
----Sets up the default keymaps
 function M.setup()
   logger.debug("flowistry.keymaps.setup()")
 

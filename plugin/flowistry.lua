@@ -24,18 +24,9 @@ local commands = {
 }
 
 vim.api.nvim_create_user_command("Flowistry", function(opts)
-  local subcommand = opts.fargs[1]
-  if opts.fargs[2] then
-    subcommand = subcommand .. " " .. opts.fargs[2]
-  end
-
-  if not subcommand then
-    logger.error("no subcommand provided")
-    return
-  end
-
+  local subcommand = (opts.fargs[1] or "") .. " " .. (opts.fargs[2] or "")
   local fun = commands[subcommand]
-  if fun ~= nil then
+  if fun then
     fun()
   else
     logger.error("unknown subcommand: " .. subcommand)
