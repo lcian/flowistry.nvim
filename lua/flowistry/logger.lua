@@ -48,6 +48,10 @@ local highlight = {
 ---@param log_level string
 ---@param message string
 function M._log(log_level, message)
+  if log_level < level then
+    return
+  end
+
   local debug_info = debug.getinfo(3, "Sl")
   local code_path = debug_info.source:sub(2)
   local code_line = debug_info.currentline
