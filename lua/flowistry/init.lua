@@ -97,13 +97,15 @@ function M.render()
       end
 
       local match = utils.focus_response_query(result, position)
-      if match == nil then
-        logger.info("no matches, should return")
+      if not match then
         return
       end
 
       utils.immediately(function()
-        logger.debug("setting highlights")
+        local position_now = state.mark or utils.get_cursor_pos()
+        if not vim.deep_equal(position, position_now) then
+          return
+        end
         for _, pos in ipairs(result.containers) do
           vim.api.nvim_buf_set_extmark(0, constants.namespace, pos.start.line, pos.start.column, {
             end_row = pos["end"].line,
