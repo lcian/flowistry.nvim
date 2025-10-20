@@ -1,5 +1,6 @@
 local constants = require("flowistry.constants")
 local logger = require("flowistry.logger")
+local state = require("flowistry.state")
 
 ---@class flowistry.utils
 ---@field find_or_install_dependencies fun()
@@ -140,12 +141,15 @@ end
 ---@class flowistry.utils.focusOpts
 ---@field filename string
 ---@field position flowistry.charPos
----@field use_cache boolean?
 
 ---@param opts flowistry.utils.focusOpts
----@param callback function(boolean, flowistry.focusResponse?)
+---@param callback function(boolean, flowistry.focusResponse.ok?)
 function M.call_flowistry_then(opts, callback)
-  opts.use_cache = opts.use_cache or true
+  local cached_res = state.cache[{ opts.filename, opts.position }]
+  if cached_res then
+    callback(true, cached_res)
+    return
+  end
 
   vim.system(
     { "cargo", "+" .. constants.rust.toolchain.channel, "flowistry", "focus", opts.filename, tostring(opts.position.line), tostring(opts.position.column) },
@@ -166,6 +170,7 @@ function M.call_flowistry_then(opts, callback)
           return
         end
         local result = assert(focus_result.Ok)
+        state.cache[{ opts.filename, result.containers[1] }] = result
         callback(true, result)
       end
 
