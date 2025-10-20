@@ -61,7 +61,7 @@ function M._log(log_level, message)
 
   local function emit()
     vim.cmd(string.format("echohl %s", level_to_highlight[log_level]))
-    local formatted = string.format("[%-6s%s] %s:%s : %s", log_level:upper(), os.date("%H:%M:%S"), code_path, code_line, message)
+    local formatted = string.format("[%-6s%s] %s:%s: %s", log_level:upper(), os.date("%H:%M:%S"), code_path, code_line, message)
     for _, line in ipairs(vim.split(formatted, "\n")) do
       local formatted_line = string.format("[flowistry.nvim] %s", vim.fn.escape(line, [["\]]))
       ---@diagnostic disable-next-line

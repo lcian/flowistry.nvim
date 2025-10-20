@@ -7,26 +7,12 @@ local state = require("flowistry.state")
 ---@return flowistry.utils
 local M = {}
 
-local has_deps = nil
----Ensure that dependencies are installed, then schedule the callback to run immediately on the neovim event loop.
----The callback receives the result of the dependency check and is wrapped with `vim.schedule_wrap`.
----@param callback function(boolean)
-function M.ensure_deps_then(callback)
-  local cb = function(params)
-    M.immediately(callback, params)
-  end
-
-  if has_deps ~= nil then
-    cb(has_deps)
-    return
-  end
-  logger.debug("finding/installing dependencies")
+function M.maybe_install_dependencies()
+  logger.debug("checking if dependencies are installed")
 
   local has_cargo = vim.fn.executable("cargo")
   if has_cargo == 0 then
     logger.error("flowistry requires cargo, please install it")
-    has_deps = false
-    cb(has_deps)
     return
   end
   logger.debug("cargo found")
@@ -44,19 +30,29 @@ function M.ensure_deps_then(callback)
       local installed_version = version_res.stdout:gsub("%s+", "")
       logger.debug("flowistry is installed with version " .. installed_version)
       if installed_version ~= constants.flowistry.version then
-        logger.warn("found flowistry version " .. installed_version .. ", but version " .. constants.flowistry.version .. " is required")
+        logger.warn("found flowistry version " .. installed_version .. ", but version " .. constants.flowistry.version .. " expected")
       else
         should_install = false
       end
     end
 
     if not should_install then
-      has_deps = true
-      cb(has_deps)
+      logger.debug("flowistry is already installed with the expected version")
+      state.has_deps = true
       return
     end
 
-    logger.debug("toolchain install")
+    M.immediately(function()
+      vim.notify("[flowistry] installing dependencies", vim.log.levels.INFO)
+    end)
+
+    local has_rustup = vim.fn.executable("rustup")
+    if has_rustup == 0 then
+      logger.error("installing flowistry requires rustup, please install it")
+      return
+    end
+
+    logger.debug("installing Rust toolchain " .. constants.rust.toolchain.channel)
     vim.system({
       "rustup",
       "toolchain",
@@ -67,13 +63,10 @@ function M.ensure_deps_then(callback)
       timeout = constants.timeout,
     }, function(toolchain_res)
       if toolchain_res.code ~= 0 then
-        logger.error("failed to install flowistry_ide")
-        has_deps = false
-        cb(has_deps)
+        logger.error("failed to install flowistry: failed to install Rust toolchain " .. constants.rust.toolchain.channel)
         return
       end
 
-      logger.debug("component add")
       local cmd = { "rustup", "component", "add" }
       for _, component in ipairs(constants.rust.toolchain.components) do
         table.insert(cmd, component)
@@ -81,18 +74,17 @@ function M.ensure_deps_then(callback)
       table.insert(cmd, "--toolchain")
       table.insert(cmd, constants.rust.toolchain.channel)
 
+      logger.debug("installing required components " .. vim.inspect(constants.rust.toolchain.components) .. " for toolchain " .. constants.rust.toolchain.channel)
       vim.system(cmd, {
         text = true,
         timeout = constants.timeout,
       }, function(components_res)
         if components_res.code ~= 0 then
-          logger.error("failed to install flowistry_ide")
-          has_deps = false
-          cb(has_deps)
+          logger.debug("failed to install required components " .. vim.inspect(constants.rust.toolchain.components) .. " for toolchain " .. constants.rust.toolchain.channel)
           return
         end
 
-        logger.debug("install flowistry")
+        logger.debug("installing flowistry_ide version " .. constants.flowistry.version)
         vim.system({
           "cargo",
           "+" .. constants.rust.toolchain.channel,
@@ -107,15 +99,14 @@ function M.ensure_deps_then(callback)
           timeout = constants.timeout,
         }, function(res)
           if res.code ~= 0 then
-            logger.error("failed to install flowistry_ide")
-            has_deps = false
-            cb(has_deps)
+            logger.error("failed to install flowistry: failed to install flowistry_ide version" .. constants.rust.toolchain.channel)
             return
           end
 
-          logger.info("installed flowistry_ide version " .. constants.flowistry.version)
-          has_deps = true
-          cb(has_deps)
+          M.immediately(function()
+            vim.notify("[flowistry] installed dependencies", vim.log.levels.INFO)
+          end)
+          state.has_deps = true
         end)
       end)
     end)

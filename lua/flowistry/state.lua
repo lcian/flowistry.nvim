@@ -75,12 +75,14 @@ setmetatable(cache_proxy, cache_meta)
 ---@class flowistry.state
 ---@field options flowistry.options current options
 ---@field cache flowistry.cache
+---@field has_deps boolean are dependencies installed
 ---@field enabled boolean? buffer local - is focus mode enabled
 ---@field mark flowistry.charPos? buffer local - mark position
 ---@field autocmd integer? buffer local - render autocmd
 ---@field last_pos flowistry.charPos? buffer local - last position we focused on
 ---@return flowistry.state
 local M = {
+  has_deps = false,
   cache = cache_proxy,
   options = {},
 }
