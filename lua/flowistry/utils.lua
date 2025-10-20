@@ -39,9 +39,8 @@ function M.ensure_deps_then(callback)
 
     if version_res.code ~= 0 then
       logger.debug("flowistry is not installed")
-    end
-
-    if version_res.stdout then
+      should_install = true
+    else
       local installed_version = version_res.stdout:gsub("%s+", "")
       logger.debug("flowistry is installed with version " .. installed_version)
       if installed_version ~= constants.flowistry.version then
@@ -57,29 +56,68 @@ function M.ensure_deps_then(callback)
       return
     end
 
+    logger.debug("toolchain install")
     vim.system({
-      "cargo",
-      "+" .. constants.rust.toolchain.channel,
+      "rustup",
+      "toolchain",
       "install",
-      "flowistry_ide",
-      "--version",
-      constants.flowistry.version,
-      "--locked",
-      "--force",
+      constants.rust.toolchain.channel,
     }, {
       text = true,
       timeout = constants.timeout,
-    }, function(res)
-      if res.code ~= 0 then
+    }, function(toolchain_res)
+      if toolchain_res.code ~= 0 then
         logger.error("failed to install flowistry_ide")
         has_deps = false
         cb(has_deps)
         return
       end
 
-      logger.info("installed flowistry_ide version " .. constants.flowistry.version)
-      has_deps = true
-      cb(has_deps)
+      logger.debug("component add")
+      local cmd = { "rustup", "component", "add" }
+      for _, component in ipairs(constants.rust.toolchain.components) do
+        table.insert(cmd, component)
+      end
+      table.insert(cmd, "--toolchain")
+      table.insert(cmd, constants.rust.toolchain.channel)
+
+      vim.system(cmd, {
+        text = true,
+        timeout = constants.timeout,
+      }, function(components_res)
+        if components_res.code ~= 0 then
+          logger.error("failed to install flowistry_ide")
+          has_deps = false
+          cb(has_deps)
+          return
+        end
+
+        logger.debug("install flowistry")
+        vim.system({
+          "cargo",
+          "+" .. constants.rust.toolchain.channel,
+          "install",
+          "flowistry_ide",
+          "--version",
+          constants.flowistry.version,
+          "--locked",
+          "--force",
+        }, {
+          text = true,
+          timeout = constants.timeout,
+        }, function(res)
+          if res.code ~= 0 then
+            logger.error("failed to install flowistry_ide")
+            has_deps = false
+            cb(has_deps)
+            return
+          end
+
+          logger.info("installed flowistry_ide version " .. constants.flowistry.version)
+          has_deps = true
+          cb(has_deps)
+        end)
+      end)
     end)
   end)
 end
