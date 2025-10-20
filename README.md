@@ -4,9 +4,9 @@ flowistry.nvim is a Neovim plugin that uses [flowistry](https://github.com/willc
 
 ## Usage
 
-- Enter focus mode using `:Flowistry focus on`. The plugin will track your cursor's position and select a portion of code underneath it. All of the code in the current function that doesn't affect or isn't affected by the selected code (according to the information flow analysis) will be faded out.
+- Enter focus mode using `:Flowistry focus on`. The plugin will track your cursor's position and select a portion of code surrounding it. All of the code in the current function that doesn't affect or isn't affected by the selected code (according to the information flow analysis) will be faded out.
 - You can leave focus mode using `:Flowistry focus off`.
-- You can also set a mark at the current cursor position using `:Flowistry mark set`. That will allow you to move your cursor around freely, as the focus will remain on the marked region.
+- You can also set a mark at the current cursor position using `:Flowistry mark set`. That allows you to move your cursor around freely, as the focus remains on the marked region.
 
 ## Installation
 
@@ -39,7 +39,7 @@ Here is the default configuration for the plugin, which you can override using t
 
 ### Keymaps
 
-When `register_default_keymaps` is set `true`, the plugin registers the following keymaps:
+When `register_default_keymaps` is `true`, the plugin registers the following keymaps:
 
 - `<leader>nf` - Toggle focus mode
 - `<leader>nm` - Set mark at cursor position
