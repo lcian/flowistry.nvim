@@ -2,6 +2,12 @@
 
 flowistry.nvim is a Neovim plugin that uses [flowistry](https://github.com/willcrichton/flowistry) to provide syntax highlighting based on information flow for Rust programs.
 
+## Usage
+
+- Enter focus mode using `:Flowistry focus on`. The plugin will track your cursor's position and select a portion of code underneath it. All of the code in the current function that doesn't affect or isn't affected by the selected code (according to the information flow analysis) will be faded out.
+- You can leave focus mode using `:Flowistry focus off`.
+- You can also set a mark at the current cursor position using `:Flowistry mark set`. That will allow you to move your cursor around freely, as the focus will remain on the marked region.
+
 ## Installation
 
 ### Dependencies
@@ -47,7 +53,7 @@ The plugin defines the following commands:
 - `:Flowistry focus on` - Enable focus mode
 - `:Flowistry focus off` - Disable focus mode
 - `:Flowistry mark set` - Set a mark at the current cursor position; you can move around freely and the focus will remain on the mark
-- `:Flowistry mark remove` - Remove the current mark
+- `:Flowistry mark remove` - Remove the mark
 
 You can disable the default keymaps and set up your own based on these commands.
 
