@@ -15,10 +15,10 @@ repos:
     rev: v2.3.0
     hooks:
       - id: stylua-github
-  - repo: https://github.com/lcian/pre-commit-luacheck
+  - repo: https://github.com/Calinou/pre-commit-luacheck
     rev: v1.0.0
     hooks:
-      - id: luacheck-docker
+      - id: luacheck
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.11.0.1
     hooks:
@@ -27,3 +27,6 @@ repos:
     rev: v0.18.1
     hooks:
       - id: markdownlint-cli2
+
+ci:
+  skip: [luacheck]
