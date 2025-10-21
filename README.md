@@ -66,3 +66,4 @@ You can disable the default keymaps and set up your own based on these commands.
 ## Contributing
 
 All Issues and Pull Requests are welcome.
+For Pull Requests, please install the [pre-commit](https://github.com/pre-commit/pre-commit) hook to ensure all checks pass locally.
