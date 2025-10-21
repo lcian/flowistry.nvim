@@ -133,7 +133,6 @@ end
 
 function M.clear_cache()
   cache = {}
-  setmetatable(cache, cache_meta)
 end
 
 return M
