@@ -60,17 +60,23 @@ function M.focus_on()
     return
   end
   state.enabled = true
-  state.autocmd = vim.api.nvim_create_autocmd({ "CursorMoved" }, {
+  state.render_autocmd = vim.api.nvim_create_autocmd({ "CursorMoved" }, {
     group = constants.augroup,
     buffer = 0,
     callback = M.render,
+  })
+  state.save_autocmd = vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+    group = constants.augroup,
+    buffer = 0,
+    callback = state.clear_cache,
   })
   M.render()
 end
 
 function M.focus_off()
   state.enabled = false
-  vim.api.nvim_del_autocmd(state.autocmd)
+  vim.api.nvim_del_autocmd(state.render_autocmd)
+  vim.api.nvim_del_autocmd(state.save_autocmd)
   vim.api.nvim_buf_clear_namespace(0, constants.namespace, 0, -1)
 end
 

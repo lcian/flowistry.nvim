@@ -78,7 +78,8 @@ setmetatable(cache_proxy, cache_meta)
 ---@field has_deps boolean are dependencies installed
 ---@field enabled boolean? buffer local - is focus mode enabled
 ---@field mark flowistry.charPos? buffer local - mark position
----@field autocmd integer? buffer local - render autocmd
+---@field render_autocmd integer? buffer local - render autocmd
+---@field save_autocmd integer? buffer local - on save autocmd
 ---@field last_pos flowistry.charPos? buffer local - last position we focused on
 ---@return flowistry.state
 local M = {
@@ -87,7 +88,7 @@ local M = {
   options = {},
 }
 
-local buflocals = { "enabled", "mark", "autocmd", "last_pos" }
+local buflocals = { "enabled", "mark", "render_autocmd", "save_autocmd", "last_pos" }
 
 local state_meta = {
   __index = function(table, index)
@@ -126,8 +127,13 @@ local state_meta = {
 setmetatable(M, state_meta)
 
 ---@param options flowistry.options
-M.setup = function(options)
+function M.setup(options)
   M.options = options
+end
+
+function M.clear_cache()
+  cache = {}
+  setmetatable(cache, cache_meta)
 end
 
 return M
