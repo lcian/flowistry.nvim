@@ -192,9 +192,13 @@ function M.call_flowistry_then(opts, callback)
       local function after_gzip(json)
         ---@type flowistry.focusResponse
         local focus_result = vim.json.decode(json)
+        if focus_result == nil then
+          logger.debug("couldn't decode result of flowistry focus")
+          callback(false, nil)
+          return
+        end
         if focus_result.Err ~= nil then
-          -- TODO: change to error, possibly based on Err kind
-          logger.warn("got Err from flowistry focus: " .. focus_result.Err)
+          logger.debug("got Err from flowistry focus: " .. vim.inspect(focus_result.Err))
           callback(false, nil)
           return
         end
